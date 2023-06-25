@@ -11,10 +11,7 @@ export default async function Home() {
     <>
       <h1>Your feed</h1>
       <p>Home</p>
-      <p>
-        Your personal Breadit frontpage. Come here to check in with your
-        favorite communities.
-      </p>
+      <p>Frontpage. Come here to check in with your favorite communities.</p>
       <Link href={`/r/create`}>Create Community</Link>
     </>
   );
