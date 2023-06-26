@@ -1,12 +1,16 @@
-import Providers from "@/components/Providers";
+import Navbar from "@/components/Navbar";
 import { cn } from "@/lib/utils";
 import { Inter } from "next/font/google";
+import Providers from "@/components/Providers";
+import { Toaster } from "@/components/ui/Toaster";
+
+import "@/styles/globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Acedit",
-  description: "built with Next.js and Typescript",
+  title: "Acedrit",
+  description: "Next.js and TypeScript.",
 };
 
 export default function RootLayout({
@@ -19,18 +23,22 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={
-        (cn("bg-white text-slate-900 antialiased light"), inter.className)
-      }
+      className={cn(
+        "bg-white text-slate-900 antialiased light",
+        inter.className
+      )}
     >
-      <body className="max-h-screen pt-12 bg-slate-50 antialiased">
+      <body className="min-h-screen pt-12 bg-slate-50 antialiased">
         <Providers>
+          {/* @ts-expect-error Server Component */}
           <Navbar />
           {authModal}
+
           <div className="container max-w-7xl mx-auto h-full pt-12">
             {children}
           </div>
         </Providers>
+        <Toaster />
       </body>
     </html>
   );
