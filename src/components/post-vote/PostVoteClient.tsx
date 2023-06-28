@@ -1,43 +1,46 @@
 "use client";
 
-import { Button } from "@/components/ui/Button";
-import { toast } from "@/hooks/use-toast";
-import { useCustomToasts } from "@/hooks/use-custom-toast";
-import { cn } from "@/lib/utils";
-import { CommentVoteRequest } from "@/lib/validators/vote";
+import { useCustomToasts } from "@/hooks/use-custom-toasts";
+import { PostVoteRequest } from "@/lib/validators/vote";
 import { usePrevious } from "@mantine/hooks";
-import { CommnetVote, VoteType } from "@prisma/client";
+import { VoteType } from "@prisma/client";
 import { useMutation } from "@tanstack/react-query";
 import axios, { AxiosError } from "axios";
+import { useEffect, useState } from "react";
+import { toast } from "../../hooks/use-toast";
+import { Button } from "../ui/Button";
 import { ArrowBigDown, ArrowBigUp } from "lucide-react";
-import { FC, useState } from "react";
+import { cn } from "@/lib/utils";
 
-interface CommentVotesProps {
-  commentId: string;
-  votesAmt: number;
-  currentVote?: PartialVote;
+interface PostVoteClientProps {
+  postId: string;
+  initialVotesAmt: number;
+  initialVote?: VoteType | null;
 }
 
-type PartialVote = Pick<CommentVote, "type">;
-
-const CommentVotes: FC<CommentVotesProps> = ({
-  commentId,
-  votesAmt: _votesAmt,
-  currentVote: _currentVote,
-}) => {
+const PostVoteClient = ({
+  postId,
+  initialVotesAmt,
+  initialVote,
+}: PostVoteClientProps) => {
   const { loginToast } = useCustomToasts();
-  const [votesAmt, setVotesAmt] = useState<number>(_votesAmt);
-  const [currentVote, setCurrentVote] = useState<PartialVote | undefined>(
-    _currentVote
-  );
+  const [votesAmt, setVotesAmt] = useState<number>(initialVotesAmt);
+  const [currentVote, setCurrentVote] = useState(initialVote);
   const prevVote = usePrevious(currentVote);
+
+  // ensure sync with server
+  useEffect(() => {
+    setCurrentVote(initialVote);
+  }, [initialVote]);
+
   const { mutate: vote } = useMutation({
     mutationFn: async (type: VoteType) => {
-      const payload: CommentVoteRequest = {
+      const payload: PostVoteRequest = {
         voteType: type,
-        commentId,
+        postId: postId,
       };
-      await axios.patch("/api/subreddit/post/comment/vote", payload);
+
+      await axios.patch("/api/subreddit/post/vote", payload);
     },
     onError: (err, voteType) => {
       if (voteType === "UP") setVotesAmt((prev) => prev - 1);
@@ -45,6 +48,7 @@ const CommentVotes: FC<CommentVotesProps> = ({
 
       // reset current vote
       setCurrentVote(prevVote);
+
       if (err instanceof AxiosError) {
         if (err.response?.status === 401) {
           return loginToast();
@@ -53,19 +57,19 @@ const CommentVotes: FC<CommentVotesProps> = ({
 
       return toast({
         title: "Something went wrong.",
-        description: "You vote was not registered. Please try again",
-        variant: "desctructive",
+        description: "Your vote was not registered. Please try again.",
+        variant: "destructive",
       });
     },
     onMutate: (type: VoteType) => {
-      if (currentVote?.type === type) {
-        // user voting the same way again, so remove their vote
+      if (currentVote === type) {
+        // User is voting the same way again, so remove their vote
         setCurrentVote(undefined);
         if (type === "UP") setVotesAmt((prev) => prev - 1);
         else if (type === "DOWN") setVotesAmt((prev) => prev + 1);
       } else {
-        // user is voting in the opposite direction, so subtract 2
-        setCurrentVote({ type });
+        // User is voting in the opposite direction, so subtract 2
+        setCurrentVote(type);
         if (type === "UP") setVotesAmt((prev) => prev + (currentVote ? 2 : 1));
         else if (type === "DOWN")
           setVotesAmt((prev) => prev - (currentVote ? 2 : 1));
@@ -74,37 +78,39 @@ const CommentVotes: FC<CommentVotesProps> = ({
   });
 
   return (
-    <div className="flex gap-1">
+    <div className="flex flex-col gap-4 sm:gap-0 pr-6 sm:w-20 pb-4 sm:pb-0">
       {/* upvote */}
       <Button
         onClick={() => vote("UP")}
-        size="xs"
+        size="sm"
         variant="ghost"
         aria-label="upvote"
       >
         <ArrowBigUp
           className={cn("h-5 w-5 text-zinc-700", {
-            "text-emerald-500 fill-emerald-500": currentVote?.type === "UP",
+            "text-emerald-500 fill-emerald-500": currentVote === "UP",
           })}
         />
       </Button>
 
       {/* score */}
-      <p className="text-center py-2 px-1 font-medium text-xs text-zinc-900">
+      <p className="text-center py-2 font-medium text-sm text-zinc-900">
         {votesAmt}
       </p>
 
       {/* downvote */}
       <Button
         onClick={() => vote("DOWN")}
-        size="xs"
+        size="sm"
         className={cn({
-          "text-emerald-500": currentVote?.type === "DOWN",
+          "text-emerald-500": currentVote === "DOWN",
         })}
+        variant="ghost"
+        aria-label="upvote"
       >
         <ArrowBigDown
           className={cn("h-5 w-5 text-zinc-700", {
-            "text-red-500 fill-red-500": currentVote?.type === "DOWN",
+            "text-red-500 fill-red-500": currentVote === "DOWN",
           })}
         />
       </Button>
@@ -112,4 +118,4 @@ const CommentVotes: FC<CommentVotesProps> = ({
   );
 };
 
-export default CommentVotes;
+export default PostVoteClient;

@@ -1,12 +1,13 @@
 "use client";
 
-import { INFINITE_SCROLL_PAGINATIONI_RESULTS } from "@/config";
+import { INFINITE_SCROLL_PAGINATION_RESULTS } from "@/config";
 import { ExtendedPost } from "@/types/db";
 import { useIntersection } from "@mantine/hooks";
-import { useInifiteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import axios from "axios";
 import { Loader2 } from "lucide-react";
 import { FC, useEffect, useRef } from "react";
+import Post from "./Post";
 import { useSession } from "next-auth/react";
 
 interface PostFeedProps {
@@ -15,34 +16,39 @@ interface PostFeedProps {
 }
 
 const PostFeed: FC<PostFeedProps> = ({ initialPosts, subredditName }) => {
-  const lastPostRef = useRef<HTMLElement>(null)
+  const lastPostRef = useRef<HTMLElement>(null);
   const { ref, entry } = useIntersection({
     root: lastPostRef.current,
-    threshold: 1
-  })
+    threshold: 1,
+  });
+  const { data: session } = useSession();
 
-  const {data, fetchNextPage, isFetchingNextPage } = useInifiniteQuery(
-    ['infinite-query']
-    async ({ pageParam = 1}) => {
-      const query = `/api/posts?limit=${INFINITE_SCROLL_PAGINATIONI_RESULTS}&page=${pageParam}` + (!!subredditName ? `&subredditName=${subredditName}` : '')
-      const { data } = await axios.get(query) 
-      return data as ExtendedPost[]
+  const { data, fetchNextPage, isFetchingNextPage } = useInfiniteQuery(
+    ["infinite-query"],
+    async ({ pageParam = 1 }) => {
+      const query =
+        `/api/posts?limit=${INFINITE_SCROLL_PAGINATION_RESULTS}&page=${pageParam}` +
+        (!!subredditName ? `&subredditName=${subredditName}` : "");
+
+      const { data } = await axios.get(query);
+      return data as ExtendedPost[];
     },
+
     {
-      getNextPageparam: (_, pages) => {
-        return pages.length + 1
+      getNextPageParam: (_, pages) => {
+        return pages.length + 1;
       },
-      initialData: {pages: [initialPosts], pageParams: [1]}
+      initialData: { pages: [initialPosts], pageParams: [1] },
     }
-  )
+  );
 
   useEffect(() => {
-    if (entry?.isIntersecting){
-      fetchNextPage() // Load more posts when the last post comes into view
+    if (entry?.isIntersecting) {
+      fetchNextPage(); // Load more posts when the last post comes into view
     }
-  }, [entry, fetchNextPage])
+  }, [entry, fetchNextPage]);
 
-  const posts = data?.pages.flatMap((page) => page) ?? initialPosts
+  const posts = data?.pages.flatMap((page) => page) ?? initialPosts;
 
   return (
     <ul className="flex flex-col col-span-2 space-y-6">
@@ -52,10 +58,13 @@ const PostFeed: FC<PostFeedProps> = ({ initialPosts, subredditName }) => {
           if (vote.type === "DOWN") return acc - 1;
           return acc;
         }, 0);
+
         const currentVote = post.votes.find(
           (vote) => vote.userId === session?.user.id
         );
+
         if (index === posts.length - 1) {
+          // Add a ref to the last post in the list
           return (
             <li key={post.id} ref={ref}>
               <Post
@@ -73,6 +82,7 @@ const PostFeed: FC<PostFeedProps> = ({ initialPosts, subredditName }) => {
               key={post.id}
               post={post}
               commentAmt={post.comments.length}
+              subredditName={post.subreddit.name}
               votesAmt={votesAmt}
               currentVote={currentVote}
             />
